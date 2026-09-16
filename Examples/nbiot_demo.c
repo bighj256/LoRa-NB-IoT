@@ -60,7 +60,7 @@ void nbiot_demo(void)
     oled_show(&oled, 0, 0, 500, "3. MQTT Conn...");
     
     // 打开 Socket (请确认 IP 和端口正确)
-    ret = nbiot_mqtt_open(0, "82.157.129.239", 1883);
+    ret = nbiot_mqtt_open(0, "122.51.36.76", 1883);
     if (ret != NBIOT_EOK) {
         oled_show(&oled, 0, 12, 2000, "Open fail %d", ret);
         while (1);

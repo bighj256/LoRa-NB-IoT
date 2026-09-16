@@ -24,6 +24,8 @@ targets:
       incList:
         - .
         - Application/inc
+        - Application/data
+        - Application/Transmission
         - .cmsis/include
         - RTE/_default
         - Driver/BSP/delay

@@ -12,6 +12,8 @@
 #include "display.h"
 #include "acquisition.h"
 #include "transmission.h"
+#include "../Transmission/lora_transmission.h"
+#include "../Transmission/nbiot_transmission.h"
 // #include "sht30_demo.h"
 // #include "lora_demo.h"
 //#include "nbiot_demo.h"
@@ -149,11 +151,11 @@ int main(void)
         uint32_t sys_uptime_ms = get_ms();
         uint8_t key_val = key_scan_noblock(sys_uptime_ms);
 
-        /* 2. 获取底层通信状态 (内部已做10s非阻塞限流，每轮调用无性能负担) */
+        /* 2. 获取底层通信状态 */
         comm_status = get_comm_status();
 
         /* 3. 轮询接收 LoRa 节点数据 */
-        uint8_t lora_recv_status = transmission_receive(&display_data);
+        uint8_t lora_recv_status = transmission_lora_receive(&display_data);
 
         if (lora_recv_status == TRANS_RECV_OK) 
         {
@@ -189,82 +191,3 @@ int main(void)
     }
 }
 #endif /* DEVICE_RECEIVER */
-
-
-
-// int main(void)
-// {
-//     /* ── 系统基础初始化 ── */
-//     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-//     sys_stm32_clock_init(9);        /* 72MHz */
-//     systick_init();
-    
-//     /* ── 外设初始化 ── */
-//     oled_init();
-//     led_init();
-//     buzzer_init();
-//     key_init();
-    
-//     /* ── 通信模块初始化 ── */
-//     transmission_init();
-//     buzzer_beep_scene(BUZZER_SCENE_OK, BUZZER_MODE_INTERMITTENT, BUZZER_RHYTHM_SLOW, 1000);
-    
-//     /* ── 传感器初始化 ── */
-//     acquisition_init();
-//     buzzer_beep_scene(BUZZER_SCENE_OK, BUZZER_MODE_INTERMITTENT, BUZZER_RHYTHM_SLOW, 1000);
-
-//     /* ── 主循环变量 ── */
-//     sensor_data_t local_data = {0};     /* 本地采集数据 */
-//     sensor_data_t display_data = {0};   /* 最终送给显示的数据 */
-//     comm_status_t comm = {0};
-//     uint8_t key;
-//     uint8_t recv_ret;
-//     uint32_t last_collect = 0;          /* 上次采集时间戳 */
-//     uint32_t last_send = 0;             /* 上次发送时间戳 */
-//     const uint32_t collect_interval = 1000;  /* 1秒采集一次 */
-//     const uint32_t send_interval = 5000;     /* 5秒发送一次 */
-
-//     while (1)
-//     {
-//         key = key_scan(0);              /* 获取按键值（非阻塞） */
-//         uint32_t now = get_ms();        /* 获取系统运行毫秒数 */
-
-//         /* ── 定时采集本地传感器数据 ── */
-//         // if (now - last_collect >= collect_interval) {
-//         //     last_collect = now;
-//             if (acquisition_poll() == ACQ_OK) {
-//                 acquisition_read(&local_data);
-//                 local_data.data_valid = 1;
-//             } else {
-//                 local_data.data_valid = 0;
-//             }
-//         // }
-
-//         /* ── 定时发送（不阻塞） ── */
-//         if (now - last_send >= send_interval) {
-//             last_send = now;
-//             if (local_data.data_valid) {
-//                 transmission_send(&local_data);
-//             }
-//         }
-
-//         // /* ── 持续接收远端数据（非阻塞） ── */
-//         // recv_ret = transmission_receive(&display_data);
-//         // if (recv_ret == TRANS_RECV_OK) {
-//         //     /* 远端数据成功接收，使用远端数据刷新显示 */
-//         //     comm = get_comm_status();
-//         //     display_sensor_data(&display_data, &comm, key);
-//         //     buzzer_beep_scene(BUZZER_SCENE_OK, BUZZER_MODE_INTERMITTENT, BUZZER_RHYTHM_FAST, 200);
-//         // } else if (recv_ret == TRANS_RECV_PARSE_ERROR) {
-//         //     display_error("Parse Error");
-//         // }
-
-//         /* ── 若无远端数据，则显示本地采集数据（保证屏幕常新） ── */
-//         // if (recv_ret == TRANS_RECV_NO_DATA) {
-//             comm = get_comm_status();
-//             display_sensor_data(&local_data, &comm, key);
-//         // }
-
-//         delay_ms(5);   /* 控制主循环频率约 50Hz */
-//     }
-// }

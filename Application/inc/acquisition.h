@@ -12,6 +12,7 @@
 #include "sht30.h"
 #include "sh393.h"
 #include "jw01.h"
+#include "../data/sensor_data.h"
 
 
 
@@ -19,22 +20,6 @@
 #define ACQ_OK       0                  /* 数据采集成功 */
 #define ACQ_ERROR    1                  /* 数据采集失败 */
 #define ACQ_NO_DATA  2                  /* 没有读取到数据 */
-
-/* 传感器数据结构体 */
-
-typedef struct {
-    float    air_temp;         /* 空气温度 (°C) */
-    float    air_humi;         /* 空气湿度 (%RH) */
-    float    soil_humi;        /* 土壤湿度 (0.0 ~ 100.0%) */
-    float    light;            /* 光照强度 (lux) */
-    float    ph;               /* 土壤/水体 pH 值 (0.00 ~ 14.00) */
-    uint16_t co2;              /* 二氧化碳浓度 (ppm) */
-    
-    
-    
-    uint32_t timestamp;     /* 时间戳 */
-    uint8_t  data_valid;     /* 数据有效性标志 */
-} sensor_data_t;
 
 /* 函数声明 */
 void acquisition_init(void);

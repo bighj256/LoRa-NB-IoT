@@ -12,7 +12,7 @@
 #define NBIOT_AT_TIMEOUT        5000     /* 普通命令超时 */
 #define NBIOT_LONG_TIMEOUT      50000    /* 长操作超时（网络注册、连接等） */
 
-/* ---------- 硬件引脚定义（请根据实际接线修改）---------- */
+/* ---------- 硬件引脚定义 ---------- */
 #define NBIOT_PWR_GPIO_PORT         GPIOC
 #define NBIOT_PWR_GPIO_PIN          GPIO_Pin_13
 #define NBIOT_PWR_GPIO_CLK_ENABLE() do{ RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE); }while(0)
