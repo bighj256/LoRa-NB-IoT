@@ -14,9 +14,10 @@
 #include "transmission.h"
 #include "../Transmission/lora_transmission.h"
 #include "../Transmission/nbiot_transmission.h"
+//#include "../../Examples/nbiot_demo.h"
 // #include "sht30_demo.h"
 // #include "lora_demo.h"
-//#include "nbiot_demo.h"
+
 
 /* ──────── 设备选择 ──────── */
 //#define DEVICE_SENDER      // Lora发送端 启用此行，注释下一行

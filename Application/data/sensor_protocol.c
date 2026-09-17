@@ -2,6 +2,11 @@
 
 int pack_json(const sensor_data_t *data, char *buf, uint16_t size)
 {
+    if (!data->data_valid)
+    {
+        return -1;
+    }
+
     int len = snprintf(buf, size,
                        "{\"temp\":%.1f,\"air_humi\":%.1f,\"soil_humi\":%.1f,"
                        "\"light\":%.1f,\"ph\":%.1f,\"co2\":%hu,\"time\":%lu}",
@@ -14,10 +19,6 @@ int pack_json(const sensor_data_t *data, char *buf, uint16_t size)
                        data->timestamp);
     if(len < 0 || len >= size)
         return -1;
-    if (!data->data_valid)
-    {
-        return -1;
-    }
 
     return len;
 }

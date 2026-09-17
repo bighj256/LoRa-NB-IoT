@@ -8,6 +8,7 @@ srcDirs:
   - Components
   - Middleware
   - Application
+  - Examples
 virtualFolder:
   name: <virtual_root>
   files: []
