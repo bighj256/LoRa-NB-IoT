@@ -75,6 +75,39 @@ uint8_t transmission_lora_is_ready(void)
     return (lora_free() == LORA_EOK) ? 1 : 0;
 }
 
+uint8_t transmission_lora_send_control(const control_cmd_t *cmd)
+{
+    char json[CONTROL_JSON_MAX_LEN + 1U];
+    uint8_t status;
+    if (control_protocol_pack(cmd, json, sizeof(json)) < 0)
+        return TRANS_ERROR;
+    if (lora_free() == LORA_EBUSY)
+        return TRANS_BUSY;
+    status = lora_uart_printf("%s\r\n", json);
+    if (status == LORA_PRINTF_OK)
+        return TRANS_OK;
+    return status == LORA_PRINTF_ERR_TRUNCATED ? TRANS_TRUNCATED : TRANS_ERROR;
+}
+
+uint8_t transmission_lora_receive_control(control_cmd_t *out_cmd)
+{
+    uint8_t *frame;
+    size_t len;
+    int parsed;
+    if (out_cmd == NULL)
+        return TRANS_RECV_PARSE_ERROR;
+    frame = lora_uart_rx_get_frame();
+    if (frame == NULL)
+        return TRANS_RECV_NO_DATA;
+    len = lora_uart_rx_get_frame_len();
+    /* 传输分隔符不计入协议正文的长度上限。 */
+    while (len > 0 && (frame[len - 1] == '\r' || frame[len - 1] == '\n'))
+        len--;
+    parsed = control_protocol_parse((const char *)frame, len, out_cmd);
+    lora_uart_rx_restart();
+    return parsed ? TRANS_RECV_OK : TRANS_RECV_PARSE_ERROR;
+}
+
 static uint8_t lora_startup(uint32_t baudrate)
 {
     uint8_t ret;

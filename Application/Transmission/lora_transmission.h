@@ -9,6 +9,7 @@
 #include "transmission_types.h"
 #include "../data/sensor_data.h"
 #include "../data/sensor_protocol.h"
+#include "../data/control_protocol.h"
 
 /* LoRa模块配置参数定义 */
 #define DEMO_ADDR     2                       /* 设备地址 */
@@ -24,6 +25,9 @@
 uint8_t transmission_lora_init(void);
 uint8_t transmission_lora_send(const sensor_data_t *data); // 仅 LoRa
 uint8_t transmission_lora_receive(sensor_data_t *out_data);
+uint8_t transmission_lora_send_control(const control_cmd_t *cmd);
+/* 节点使用此入口；网关仍调用 transmission_lora_receive 接收传感器数据。 */
+uint8_t transmission_lora_receive_control(control_cmd_t *out_cmd);
 uint8_t transmission_lora_is_ready(void); // 检查 LoRa 模块是否空闲可发送
 
 #endif

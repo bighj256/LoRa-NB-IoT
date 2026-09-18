@@ -3,6 +3,8 @@
 /* NB-IoT MQTT 连接状态标志 (1=已连接, 0=未连接) */
 volatile uint8_t g_nb_mqtt_connected = 0;
 
+static void nbiot_rx_restart_preserve_mqtt(void);
+
 /**
  * @brief       NB-IoT模块硬件初始化 (激活PWR, RESET功能)
  * @param       无
@@ -102,7 +104,7 @@ static uint8_t nbiot_send_at_cmd(char *cmd, char *ack, uint32_t timeout)
 {
     uint8_t *ret = NULL;
     
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("%s\r\n", cmd);
     
     if ((ack == NULL) || (timeout == 0))
@@ -126,7 +128,7 @@ static uint8_t nbiot_send_at_cmd(char *cmd, char *ack, uint32_t timeout)
                 {
                     return NBIOT_EOK;
                 }
-                nbiot_uart_rx_restart();
+                nbiot_rx_restart_preserve_mqtt();
             }
             timeout--;
             delay_ms(1);
@@ -235,7 +237,7 @@ uint8_t nbiot_get_csq(nbiot_csq_t *csq)
     
     if (csq == NULL) return NBIOT_EINVAL;
     
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("AT+CSQ\r\n");
     
     uint32_t timeout = NBIOT_AT_TIMEOUT;
@@ -262,7 +264,7 @@ uint8_t nbiot_get_csq(nbiot_csq_t *csq)
             }
             
             // 当前帧中没有 OK，清空缓冲并继续等待后续帧
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
         delay_ms(1);
     }
@@ -284,7 +286,7 @@ uint8_t nbiot_get_creg(nbiot_creg_stat_t *stat)
     int n, reg;
     if (stat == NULL) return NBIOT_EINVAL;
 
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("AT+CREG?\r\n");
 
     uint32_t timeout = NBIOT_AT_TIMEOUT;
@@ -300,7 +302,7 @@ uint8_t nbiot_get_creg(nbiot_creg_stat_t *stat)
             if (strstr((const char *)frame, "OK") != NULL) {
                 return got_creg ? NBIOT_EOK : NBIOT_ERROR;
             }
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
         delay_ms(1);
     }
@@ -333,7 +335,7 @@ uint8_t nbiot_mqtt_open(uint8_t socket_id, const char *host, uint16_t port)
     char cmd[80] = {0};
     sprintf(cmd, "AT+ECMTOPEN=%d,\"%s\",%d", socket_id, host, port);
 
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("%s\r\n", cmd);
 
     uint32_t timeout = NBIOT_LONG_TIMEOUT;
@@ -353,7 +355,7 @@ uint8_t nbiot_mqtt_open(uint8_t socket_id, const char *host, uint16_t port)
                     return (res == 0) ? NBIOT_EOK : NBIOT_ERROR;
                 }
             }
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
         delay_ms(1);
     }
@@ -402,7 +404,7 @@ uint8_t nbiot_mqtt_connect(uint8_t socket_id, const char *clientid,
             socket_id, clientid, username, password);
 
     /* 2. 清理旧接收数据，发送命令 */
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("%s\r\n", cmd);
 
     /* 3. 等待模块返回最终连接结果 */
@@ -438,7 +440,7 @@ uint8_t nbiot_mqtt_connect(uint8_t socket_id, const char *clientid,
                     return NBIOT_ERROR;
                 }
             }
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
 
         delay_ms(1);
@@ -490,7 +492,7 @@ uint8_t nbiot_mqtt_subscribe(uint8_t socket_id, uint16_t msgid,
     }
 
     /* 3. 清理旧接收数据，发送命令 */
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("%s\r\n", cmd);
 
     /* 4. 等待订阅最终结果 */
@@ -529,7 +531,7 @@ uint8_t nbiot_mqtt_subscribe(uint8_t socket_id, uint16_t msgid,
                     return NBIOT_ERROR;
                 }
             }
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
 
         delay_ms(1);
@@ -560,7 +562,7 @@ uint8_t nbiot_mqtt_publish(uint8_t socket_id, uint16_t msgid,
             socket_id, msgid, qos, retain, topic, payload);
 
     int len = strlen(cmd);
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("%s\r\n", cmd);
 
     uint32_t timeout = NBIOT_AT_TIMEOUT;
@@ -589,7 +591,7 @@ uint8_t nbiot_mqtt_publish(uint8_t socket_id, uint16_t msgid,
                 else
                     return NBIOT_EOK;
             }
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
         delay_ms(1);
     }
@@ -616,7 +618,7 @@ uint8_t nbiot_mqtt_publish_hex(uint8_t socket_id, uint16_t msgid,
     sprintf(cmd, "AT+ECMTPUB=%d,%d,%d,%d,\"%s\",%s",
             socket_id, msgid, qos, retain, topic, payload_hex);
         usart_printf(USART2, "cmd:%s\r\n", cmd);
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("%s\r\n", cmd);
 
     uint32_t timeout = NBIOT_AT_TIMEOUT;
@@ -645,7 +647,7 @@ uint8_t nbiot_mqtt_publish_hex(uint8_t socket_id, uint16_t msgid,
                 else
                     return NBIOT_EOK;
             }
-            nbiot_uart_rx_restart();
+            nbiot_rx_restart_preserve_mqtt();
         }
         delay_ms(1);
     }
@@ -675,40 +677,118 @@ uint8_t nbiot_mqtt_close(uint8_t socket_id)
  * @retval      NBIOT_EOK  : 成功提取一条消息
  *              NBIOT_EBUSY: 暂无消息
  *              NBIOT_ERROR: 格式解析失败
+ * @note        负载按单行文本提取，支持原始 JSON 和带外层引号的文本。
+ *              保留负载内部的引号及转义字符，不在本层校验 JSON。
  */
-uint8_t nbiot_mqtt_recv(nbiot_mqtt_recv_t *recv)
+/* MQTT receive buffering: AT 等待和主循环共用，均在前台调用。 */
+#define NBIOT_MQTT_QUEUE_SIZE 4U
+static nbiot_mqtt_recv_t mqtt_queue[NBIOT_MQTT_QUEUE_SIZE];
+static uint8_t mqtt_queue_head;
+static uint8_t mqtt_queue_count;
+static uint8_t mqtt_queue_error;
+
+static uint8_t nbiot_parse_mqtt_line(const char *message, nbiot_mqtt_recv_t *recv)
 {
-    uint8_t *ret;
+    const char *payload_start;
+    const char *line_end;
+    size_t payload_len;
+    int consumed = 0;
+    int fields = 0;
     int id, msgid;
     char topic[64];
-    char payload[NBIOT_RECV_MSG_MAX_LEN];
     
-    if (recv == NULL) return NBIOT_EINVAL;
-    
-    ret = nbiot_uart_rx_get_frame();
-    if (ret == NULL)
+    /* 只扫描消息头，避免截断 JSON 引号。 */
+    if (message != NULL)
     {
-        return NBIOT_EBUSY;          /* 没有完整帧 */
+        /* 限制数字宽度，防止异常输入导致 %d 转换溢出。 */
+        fields = sscanf(message, "+ECMTRECV: %5d,%5d,\"%63[^\"\r\n]\",%n",
+                        &id, &msgid, topic, &consumed);
     }
-    
-    /* 尝试解析 +ECMTRECV: <id>,<msgid>,"<topic>","<payload>" */
-    if (sscanf((const char *)ret, "+ECMTRECV: %d,%d,\"%[^\"]\",\"%[^\"]\"",
-               &id, &msgid, topic, payload) == 4)
+    if (fields == 3 && consumed > 0 && id >= 0 && msgid >= 0 && msgid <= 65535)
     {
+        line_end = message + strcspn(message, "\r\n");
+        payload_start = message + consumed;
+        if (payload_start > line_end)
+            goto recv_error;
+
+        /* 实测模块直接返回 ,{"temp":...}；行尾后的 AT 应答不属于负载。 */
+        payload_len = (size_t)(line_end - payload_start);
+        if (payload_len > 0 && payload_start[0] == '"')
+        {
+            /* 兼容 ,"ON" 以及带外层引号的 JSON，仅剥离首尾一对引号。 */
+            if (payload_len < 2 || payload_start[payload_len - 1] != '"')
+                goto recv_error;
+            payload_start++;
+            payload_len -= 2;
+        }
+        if (payload_len >= sizeof(recv->payload))
+            goto recv_error;       /* 拒绝超长负载，不把截断内容当作有效消息。 */
+
+        /* 所有检查通过后才更新输出；空负载也保留为合法 MQTT 消息。 */
         recv->socket_id = id;
         recv->msgid = msgid;
-        strncpy(recv->topic, topic, sizeof(recv->topic) - 1);
-        recv->topic[sizeof(recv->topic) - 1] = '\0';
-        strncpy(recv->payload, payload, sizeof(recv->payload) - 1);
-        recv->payload[sizeof(recv->payload) - 1] = '\0';
+        memcpy(recv->topic, topic, strlen(topic) + 1);
+        memcpy(recv->payload, payload_start, payload_len);
+        recv->payload[payload_len] = '\0';
         
-        nbiot_uart_rx_restart();     /* 消费该帧 */
         return NBIOT_EOK;
     }
     
-    /* 如果不是 MQTT 消息帧，清空继续 */
-    nbiot_uart_rx_restart();
+recv_error:
     return NBIOT_ERROR;
+}
+
+static void nbiot_rx_restart_preserve_mqtt(void)
+{
+    const char *line = (const char *)nbiot_uart_rx_get_frame();
+    nbiot_mqtt_recv_t message;
+    while (line != NULL && *line != '\0')
+    {
+        /* 只识别行首通知，避免把 payload 中的字符串当作另一条消息。 */
+        if (strncmp(line, "+ECMTRECV:", 10) == 0)
+        {
+            if (nbiot_parse_mqtt_line(line, &message) != NBIOT_EOK ||
+                mqtt_queue_count == NBIOT_MQTT_QUEUE_SIZE)
+            {
+                mqtt_queue_error = 1;
+            }
+            else
+            {
+                mqtt_queue[(mqtt_queue_head + mqtt_queue_count) % NBIOT_MQTT_QUEUE_SIZE] = message;
+                mqtt_queue_count++;
+            }
+        }
+        line += strcspn(line, "\r\n");
+        line += strspn(line, "\r\n");
+    }
+    nbiot_uart_rx_restart();
+}
+
+uint8_t nbiot_mqtt_recv(nbiot_mqtt_recv_t *recv)
+{
+    uint8_t had_frame = 0;
+    if (recv == NULL)
+        return NBIOT_EINVAL;
+
+    /* 先交付已缓存消息，避免等待新帧，也不覆盖尚未消费的指令。 */
+    if (mqtt_queue_count == 0 && nbiot_uart_rx_get_frame() != NULL)
+    {
+        had_frame = 1;
+        nbiot_rx_restart_preserve_mqtt();
+    }
+    if (mqtt_queue_count != 0)
+    {
+        *recv = mqtt_queue[mqtt_queue_head];
+        mqtt_queue_head = (mqtt_queue_head + 1U) % NBIOT_MQTT_QUEUE_SIZE;
+        mqtt_queue_count--;
+        return NBIOT_EOK;
+    }
+    if (mqtt_queue_error || had_frame)
+    {
+        mqtt_queue_error = 0;
+        return NBIOT_ERROR;
+    }
+    return NBIOT_EBUSY;
 }
 
 /**
@@ -724,7 +804,7 @@ uint8_t nbiot_get_timestamp(uint32_t *timestamp)
     int year, month, day, hour, minute, second, tz;
     char sign;
 
-    nbiot_uart_rx_restart();
+    nbiot_rx_restart_preserve_mqtt();
     nbiot_uart_printf("AT+CCLK?\r\n");
 
     uint32_t timeout = NBIOT_AT_TIMEOUT;
@@ -795,7 +875,7 @@ uint8_t nbiot_get_timestamp(uint32_t *timestamp)
                 }
                 return NBIOT_ERROR;
             }
-            nbiot_uart_rx_restart(); // 如果不是OK，继续等待下一帧
+            nbiot_rx_restart_preserve_mqtt(); // 如果不是OK，继续等待下一帧
         }
         delay_ms(1);
     }

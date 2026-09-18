@@ -186,8 +186,16 @@ static uint8_t nbiot_startup(uint32_t baudrate)
     oled_draw_string(&oled, "MQTT conn OK");
     oled_send_buffer(&oled);
 
-    // 6. 订阅主题
-    nbiot_mqtt_subscribe(0, 1, "farm/sensor/collect", 1);
+    /* 6. 只订阅控制主题，避免把自己上报的传感器数据当作下行指令。 */
+    ret = nbiot_mqtt_subscribe(0, 1, CONTROL_MQTT_TOPIC, 1);
+    if (ret != NBIOT_EOK)
+    {
+        oled_clear(&oled);
+        oled_set_cursor(&oled, 0, 60);
+        oled_draw_string(&oled, "Subscribe fail");
+        oled_send_buffer(&oled);
+        return ret;
+    }
     oled_set_cursor(&oled, 0, 60);
     oled_draw_string(&oled, "Subscribed");
     oled_send_buffer(&oled);
@@ -198,4 +206,18 @@ static uint8_t nbiot_startup(uint32_t baudrate)
     oled_send_buffer(&oled);
 
     return NBIOT_EOK;
+}
+
+uint8_t transmission_nbiot_receive_control(control_cmd_t *out_cmd)
+{
+    nbiot_mqtt_recv_t message;
+    if (out_cmd == NULL)
+        return TRANS_RECV_PARSE_ERROR;
+    if (nbiot_mqtt_recv(&message) != NBIOT_EOK)
+        return TRANS_RECV_NO_DATA;
+    if (message.socket_id != 0 || strcmp(message.topic, CONTROL_MQTT_TOPIC) != 0)
+        return TRANS_RECV_NO_DATA;
+    return control_protocol_parse(message.payload, strlen(message.payload), out_cmd)
+               ? TRANS_RECV_OK
+               : TRANS_RECV_PARSE_ERROR;
 }

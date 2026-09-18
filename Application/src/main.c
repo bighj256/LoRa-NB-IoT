@@ -12,6 +12,7 @@
 #include "display.h"
 #include "acquisition.h"
 #include "transmission.h"
+#include "control.h"
 #include "../Transmission/lora_transmission.h"
 #include "../Transmission/nbiot_transmission.h"
 //#include "../../Examples/nbiot_demo.h"
@@ -20,8 +21,13 @@
 
 
 /* ──────── 设备选择 ──────── */
-//#define DEVICE_SENDER      // Lora发送端 启用此行，注释下一行
-#define DEVICE_RECEIVER   // Lora接收端/NB-Iot发送端 启用此行，注释上一行
+/* 节点构建定义 DEVICE_SENDER；网关构建定义 DEVICE_RECEIVER（默认）。 */
+#if !defined(DEVICE_SENDER) && !defined(DEVICE_RECEIVER)
+#define DEVICE_RECEIVER
+#endif
+#if defined(DEVICE_SENDER) && defined(DEVICE_RECEIVER)
+#error "Select only one device role"
+#endif
 
 /****************************************************************
  * 共用初始化函数（避免重复代码）
@@ -73,7 +79,11 @@ int main(void)
     {
         /* 1. 获取系统运行时间 (用于非阻塞定时调度) */
         uint32_t sys_uptime_ms = get_ms();
-        uint8_t key_val = key_scan(PRESS_REPEATEDLY_DISABLE); 
+        uint8_t key_val = key_scan_noblock(sys_uptime_ms);
+
+        /* 优先处理下行；仅在节点操作 PC13，网关 PC13 已用于 NB-IoT 供电。 */
+        if (control_node_poll() == TRANS_ERROR)
+            display_error("Control error");
 
         /* 2. 定时采集传感器数据 */
         if (sys_uptime_ms - last_collect_ms >= COLLECT_INTERVAL_MS) 
@@ -152,7 +162,11 @@ int main(void)
         uint32_t sys_uptime_ms = get_ms();
         uint8_t key_val = key_scan_noblock(sys_uptime_ms);
 
-        /* 2. 获取底层通信状态 */
+        /* 2. 先接收控制指令，再执行可能等待 AT 应答的状态查询。 */
+        if (control_gateway_poll() == TRANS_ERROR)
+            display_error("Control error");
+
+        /* 获取底层通信状态 */
         comm_status = get_comm_status();
 
         /* 3. 轮询接收 LoRa 节点数据 */
@@ -186,6 +200,10 @@ int main(void)
             /* 4. 无新数据时，仅刷新 UI 的通信信号状态和按键响应 */
             display_sensor_data(&display_data, &comm_status, key_val);
         }
+
+        /* 处理查询/上传期间缓存的指令，或重试 LoRa 忙时未发出的指令。 */
+        if (control_gateway_poll() == TRANS_ERROR)
+            display_error("Control error");
 
         /* 休眠等待中断，降低系统整体功耗 */
         __WFI();
